@@ -1,0 +1,25 @@
+{
+    "manifest_version": 3,
+    "name": "Tab Resource Monitor",
+    "version": "1.0",
+    "description": "Monitors the resource usage of each tab in the browser.",
+    "permissions": [
+      "tabs",
+      "system.cpu",
+      "system.memory"
+    ],
+    "host_permissions": [
+      "<all_urls>"
+    ],
+    "background": {
+      "service_worker": "background.js",
+      "type": "module"
+    },
+    "action": {
+      "default_popup": "popup.html",
+      "default_icon": "icon.png"
+    },
+    "icons": {
+      "128": "icon.png"
+    }
+  }

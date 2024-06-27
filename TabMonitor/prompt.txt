@@ -1,0 +1,106 @@
+background.js :
+
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    if (request.action === 'getResourceUsage') {
+      chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        var tabId = tabs[0].id;
+        chrome.debugger.attach({ tabId: tabId }, '1.3', function() {
+          chrome.debugger.sendCommand({ tabId: tabId }, 'Performance.enable', {}, function() {
+            chrome.debugger.sendCommand({ tabId: tabId }, 'Performance.getMetrics', {}, function(response) {
+              var metrics = response.metrics;
+              var cpuUsage = 0;
+              var memoryUsage = 0;
+              for (var i = 0; i < metrics.length; i++) {
+                if (metrics[i].name === 'JSHeapUsedSize') {
+                  memoryUsage = metrics[i].value;
+                } else if (metrics[i].name === 'CpuUsage') {
+                  cpuUsage = metrics[i].value;
+                }
+              }
+              sendResponse({ cpuUsage: cpuUsage, memoryUsage: memoryUsage });
+              chrome.debugger.detach({ tabId: tabId });
+            });
+          });
+        });
+      });
+      return true;
+    }
+  });
+
+  devtools.html :
+
+  <!DOCTYPE html>
+<html>
+<head>
+  <script src="devtools.js"></script>
+</head>
+<body>
+</body>
+</html>
+
+devtools.js :
+chrome.devtools.panels.create("Tab Resource Monitor", "icon.png", "panel.html", function(panel) {
+    // Callback function after the panel is created
+  });
+
+manifest.json :
+
+{
+    "manifest_version": 3,
+    "name": "Tab Resource Monitor",
+    "version": "1.0",
+    "description": "Monitors the resource usage of each tab in the browser.",
+    "permissions": [
+      "tabs",
+      "activeTab",
+      "system.cpu",
+      "system.memory",
+      "storage",
+      "debugger"
+    ],
+    "background": {
+      "service_worker": "background.js"
+    },
+    "action": {
+      "default_popup": "popup.html"
+    }
+  }
+
+popup.html :
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Tab Resource Monitor</title>
+  <style>
+    body {
+      width: 300px;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tab Resource Monitor</h1>
+  <p>CPU Usage: <span id="cpuUsage"></span></p>
+  <p>Memory Usage: <span id="memoryUsage"></span></p>
+  <script src="popup.js"></script>
+</body>
+</html>
+
+popup.js :
+
+document.addEventListener('DOMContentLoaded', function() {
+    function updateResourceUsage() {
+      chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
+        chrome.runtime.sendMessage({ action: 'getResourceUsage' }, function(response) {
+          var cpuUsage = response.cpuUsage.toFixed(2);
+          var memoryUsage = (response.memoryUsage / (1024 * 1024)).toFixed(2);
+          document.getElementById('cpuUsage').textContent = cpuUsage + ' %';
+          document.getElementById('memoryUsage').textContent = memoryUsage + ' MB';
+        });
+      });
+    }
+  
+    updateResourceUsage();
+    setInterval(updateResourceUsage, 1000);
+  });
